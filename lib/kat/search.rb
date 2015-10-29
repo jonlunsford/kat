@@ -2,6 +2,7 @@ require_relative 'version'
 require_relative 'field_map'
 require 'nokogiri'
 require 'net/http'
+require 'byebug'
 
 module Kat
   BASE_URL     = 'https://kat.cr'
@@ -151,6 +152,8 @@ module Kat
 
           doc = Nokogiri::HTML(res.body)
 
+          imdbid = doc.css("div.torrentMediaInfo a.plain[href*=imdb]").text()
+
           @results[page] = doc.xpath('//table[@class="data"]//tr[position()>1]/td[1]').map do |node|
             { path:     href_of(node, 'a.torType'),
               title:    node.css('a.cellMainLink').text,
@@ -160,7 +163,8 @@ module Kat
               files:    (node = node.next_element).text.to_i,
               age:      (node = node.next_element).text,
               seeds:    (node = node.next_element).text.to_i,
-              leeches:  node.next_element.text.to_i }
+              leeches:  node.next_element.text.to_i,
+              imdbid:   imdbid }
           end
 
           # If we haven't previously performed a search with this query string, get the
