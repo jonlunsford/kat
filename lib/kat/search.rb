@@ -189,6 +189,41 @@ module Kat
       results[page_num.is_a?(Range) ? page_num.max : page_num]
     end
 
+    def detail(path)
+      @error = nil
+      @message = nil
+
+      begin
+        url = URI(BASE_URL + path)
+        res = Net::HTTP.get_response(url)
+
+        if res.code == '301'
+          location = Net::HTTP::Get.new(res.header['location'])
+          res = Net::HTTP.start(uri.host) { |http| http.request location }
+        end
+
+        return if res.code == '404'
+
+        doc = Nokogiri::HTML(res.body)
+
+        {
+          path:     path,
+          title:    doc.css('span[itemprop="name"]').text,
+          magnet:   href_of(doc, 'a[title="Magnet link"]'),
+          download: BASE_URL + href_of(doc, 'a[title="Download verified torrent file"]'),
+          last_updated: doc.css("div.timeBlock time")[0].children.first.text(),
+          last_updated_datetime: doc.css("div.timeBlock time")[0]["datetime"],
+          seeds:    doc.css("div.seedLeachContainer div.seedBlock strong").text(),
+          leeches:  doc.css("div.seedLeachContainer div.leechBlock strong").text(),
+          imdb_id:   "tt" + doc.css("div.torrentMediaInfo a.plain[href*=imdb]").text(),
+          quality:  doc.css("div.torrentMediaInfo span[id^='quality']").text()
+        }
+
+      rescue => e
+        @error = { error: e }
+      end
+    end
+
     #
     # For message chaining
     #
